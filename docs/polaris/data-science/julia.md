@@ -20,45 +20,31 @@ opening a ticket at the [ALCF Helpdesk](mailto:support@alcf.anl.gov).
 
 ## Julia Installation
 
-We encourage users interested in using Julia on Polaris to install in their home or project directories at this time. Using the official Julia 1.9 binaries from the Julia
+We encourage users interested in using Julia on Polaris to install in one of their project directories for faster file access. Using the official Julia 1.10 binaries from the Julia
 [webpage](https://julialang.org/downloads/) is recommended.
 [Juliaup](https://github.com/JuliaLang/juliaup) provides a convenient way to
-install Julia and manage the various Julia versions. The default installation will install `julia`, `juliaup`, and other commands in a `${HOME}/.julia` directory and update profile files like `.bashrc` to update `PATH` to include that directory. One can customize the installation to change these defaults.
+install Julia and manage the various Julia versions. In order to not use the
+home filesystem, set the following environment variables an export them in your
+shell configuration file (e.g., `~/.bashrc`):
 
+```bash
+export JULIAUP_DEPOT_PATH=${PROJECT}/juliaup
+export JULIA_DEPOT_PATH=${PROJECT}/julia_depot
+```
 ```bash
 module load craype-accel-nvidia80
 curl -fsSL https://install.julialang.org | sh
-```
-
-If you chose a custom installation, then be sure to update the `PATH` environment variable appropriately.
-
-```
-export PATH=${HOME}/.juliaup/bin:${PATH}
 ```
 
 You may then list the available Julia versions with `juliaup list` and install a
 specific version with `juliaup install <version>`. You can then activate a
 specific version with `juliaup use <version>` and set the default version with
 `juliaup default <version>`. `juliaup update` will update the installed Julia
-versions. In general, the latest stable release of Julia should be used.
+versions. Both the lts release and latest release run on Polaris.
 
 ```bash
 juliaup add release
-```
-
-### Julia Project Environment
-
-The Julia built-in package manager allows you to create a project and enable
-project-specific dependencies. Julia manages packages in the Julia depot located
-by default in `~/.julia`. However, that NFS filesystem is not meant for
-high-speed access. Therefore, this Julia depot folder should be located on a
-fast filesystem of your choice. The Julia depot directory is
-set via the environment variable `JULIA_DEPOT_PATH`. For example, you can set
-the Julia depot to a directory on Polaris's Eagle filesystem by adding the following line
-to your `~/.bashrc` file:
-
-```bash
-export JULIA_DEPOT_PATH=/eagle/$PROJECT/$USER/julia_depot
+juliaup add lts
 ```
 
 ## Programming Julia on Polaris
@@ -69,7 +55,7 @@ There are three key components to using Julia for large-scale computations:
 2. GPU support through [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)
 3. HDF5 support through [HDF5.jl](https://juliaio.github.io/HDF5.jl/stable/)
 
-In addition, we recommend VSCode with the [Julia
+In addition, we recommend Visual Studio Code with the [Julia
 extension](https://www.julia-vscode.org/) for a modern IDE experience, together
 with the ssh-remote extension for remote interactive development.
 ### MPI Support
@@ -84,8 +70,9 @@ $ julia --project -e 'using Pkg; Pkg.add("MPIPreferences")'
 $ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
 ```
 
-The `vendor="cray"` option is important if you intend to use gpu-aware MPI in your applications. 
-
+The `vendor="cray"` option is important if you intend to use gpu-aware MPI in
+your applications. This will create a `LocalPreferences.toml` that will override
+the default MPI configuration using Julia provided MPI artifacts.
 Check that the correct MPI library is targeted with Julia.
 ```
 julia --project -e 'using MPI; MPI.versioninfo()'
@@ -96,14 +83,14 @@ MPIPreferences:
   mpiexec: mpiexec
 
 Package versions
-  MPI.jl:             0.20.19
+  MPI.jl:             0.20.22
   MPIPreferences.jl:  0.1.11
 
 Library information:
   libmpi:  libmpi_nvidia.so
   libmpi dlpath:  /opt/cray/pe/lib64/libmpi_nvidia.so
   MPI version:  3.1.0
-  Library version:  
+  Library version:
     MPI VERSION    : CRAY MPICH version 8.1.28.2 (ANL base 3.4a2)
     MPI BUILD INFO : Wed Nov 15 21:59 2023 (git hash 1cde46f)
 ```
@@ -111,7 +98,7 @@ When running on the login node, switch back to the default provided MPI binaries
 
 ### GPU Support
 
-NVIDIA GPU support is provided through the [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) package. The default in Julia is to download artifacts (e.g. CUDA toolkit) based on the runtime detected. While that should generally work, it is recommended to use the local CUDA installation provided on Polaris especially if using gpu-aware MPI in your workloads (important to use supported versions of CUDA with Cray MPICH provided). 
+NVIDIA GPU support is provided through the [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) package. The default in Julia is to download artifacts (e.g. CUDA toolkit) based on the runtime detected. While that should generally work, it is recommended to use the local CUDA installation provided on Polaris especially if using gpu-aware MPI in your workloads (important to use supported versions of CUDA with Cray MPICH provided).
 
 To use the local CUDA installation provided by the modules on Polaris, the `LocalPreferences.toml` file can be modified as follows.
 
@@ -134,26 +121,26 @@ The GPUs are not currently usable on the Polaris login nodes, so one can confirm
 $ qsub -I -l select=1,walltime=1:00:00,filesystems=home:eagle -A [PROJECT] -q debug
 
 $ julia --project -e "using CUDA; CUDA.versioninfo()"
-CUDA runtime 12.4, artifact installation
-CUDA driver 12.4
-NVIDIA driver 535.154.5, originally for CUDA 12.2
+CUDA runtime 12.9, *artifact installation*
+CUDA driver 12.9
+NVIDIA driver 535.154.5
 
-CUDA libraries: 
-- CUBLAS: 12.2.1
-- CURAND: 10.3.5
-- CUFFT: 11.2.1
-- CUSOLVER: 11.6.1
-- CUSPARSE: 12.3.1
-- CUPTI: 22.0.0
+CUDA libraries:
+- CUBLAS: 12.9.1
+- CURAND: 10.3.10
+- CUFFT: 11.4.1
+- CUSOLVER: 11.7.5
+- CUSPARSE: 12.5.10
+- CUPTI: 2025.2.1 (API 28.0.0)
 - NVML: 12.0.0+535.154.5
 
-Julia packages: 
-- CUDA: 5.3.3
-- CUDA_Driver_jll: 0.8.1+0
-- CUDA_Runtime_jll: 0.12.1+0
+Julia packages:
+- CUDA: 5.8.2
+- CUDA_Driver_jll: 0.13.1+0
+- CUDA_Runtime_jll: 0.17.1+0
 
 Toolchain:
-- Julia: 1.10.3
+- Julia: 1.10.10
 - LLVM: 15.0.7
 
 4 devices:
@@ -173,26 +160,26 @@ $ julia --project -e "using CUDA; CUDA.set_runtime_version!(local_toolkit=true)"
 ```
 $ julia --project -e "using CUDA; CUDA.versioninfo()"
 CUDA runtime 12.2, local installation
-CUDA driver 12.4
-NVIDIA driver 535.154.5, originally for CUDA 12.2
+CUDA driver 12.9
+NVIDIA driver 535.154.5
 
-CUDA libraries: 
+CUDA libraries:
 - CUBLAS: 12.2.1
 - CURAND: 10.3.3
 - CUFFT: 11.0.8
 - CUSOLVER: 11.5.0
 - CUSPARSE: 12.1.1
-- CUPTI: 20.0.0
+- CUPTI: 2023.2.0 (API 20.0.0)
 - NVML: 12.0.0+535.154.5
 
-Julia packages: 
-- CUDA: 5.3.3
-- CUDA_Driver_jll: 0.8.1+0
-- CUDA_Runtime_jll: 0.12.1+0
-- CUDA_Runtime_Discovery: 0.2.4
+Julia packages:
+- CUDA: 5.8.2
+- CUDA_Driver_jll: 0.13.1+0
+- CUDA_Runtime_jll: 0.17.1+0
+- CUDA_Runtime_Discovery: 0.3.5
 
 Toolchain:
-- Julia: 1.10.3
+- Julia: 1.10.10
 - LLVM: 15.0.7
 
 Preferences:
@@ -202,7 +189,7 @@ Preferences:
   0: NVIDIA A100-SXM4-40GB (sm_80, 39.390 GiB / 40.000 GiB available)
   1: NVIDIA A100-SXM4-40GB (sm_80, 39.390 GiB / 40.000 GiB available)
   2: NVIDIA A100-SXM4-40GB (sm_80, 39.390 GiB / 40.000 GiB available)
-  3: NVIDIA A100-SXM4-40GB (sm_80, 39.390 GiB / 40.000 GiB available)```
+  3: NVIDIA A100-SXM4-40GB (sm_80, 39.390 GiB / 40.000 GiB available)
 ```
 
 Warning messages from the presence of CUDA in `LD_LIBRARY_PATH` were ommitted in output of the first two commands. In this case, the artifact and local installation are similar. If there was a difference, then the local installation should be preferred.
